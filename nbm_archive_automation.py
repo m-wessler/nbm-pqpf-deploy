@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
     print('Fill from:', most_recent_agg)
     print('Fill to:', most_recent_time)
-    input('Hold... Press enter to continue...')
+    # input('Hold... Press enter to continue...')
 
     # if last_nbm_download > last_nbm_agg:
     if np.datetime64(most_recent_time) > most_recent_agg:
