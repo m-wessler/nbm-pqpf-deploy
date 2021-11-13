@@ -16,7 +16,7 @@ core_limit = 24
 nbm_dir = '/nas/stid/data/nbm/pqpf/'
 
 python = '/home/michael.wessler/anaconda3/envs/pqpf/bin/python '
-dl_script = '/home/michael.wessler/code/get_nbm_gribs_aws.py ' 
+dl_script = '/home/michael.wessler/code/nbm-pqpf-deploy/get_nbm_gribs_aws.py ' 
 
 def extract_fhr_data(f, interval=24, keep_percentiles=[]): 
     import pygrib
