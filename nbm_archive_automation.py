@@ -189,7 +189,7 @@ if __name__ == '__main__':
         gc.collect()
         
         # Remove raw/temp NBM files
-        # [os.remove(f) for f in list_new_extracts]
+        [os.remove(f) for f in list_new_extracts]
 
         list_new_extracts_nc = glob(nbm_dir + 'extract/*.nc')
         months = np.unique([f.split('.')[1][:6] for f in list_new_extracts_nc])
