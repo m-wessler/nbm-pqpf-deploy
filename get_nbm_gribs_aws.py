@@ -19,6 +19,7 @@ os.environ['OMP_NUM_THREADS'] = '1'
 
 client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 tmp = '/nas/stid/data/nbm/pqpf/tmp/'
+os.makedirs(tmp, exist_ok=True)
 
 def s3_list_files(bucket_name, prefix=''):
     
