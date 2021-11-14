@@ -157,13 +157,14 @@ if __name__ == '__main__':
     print('\n%s\n'%cmd)
     subprocess.call(shlex.split(cmd))
     
-    nbm_raw = np.array(sorted([f for f in sorted(glob(nbm_dir + '*/*.grib2'))]))
+    nbm_raw = np.array(sorted([f for f in sorted(glob(nbm_dir + 'tmp/*/*.grib2'))]))
 
     for forecast_hour in np.arange(24, 168+1, 24):
 
         print('\nProcessing f%03d'%forecast_hour)
 
         list_new_extracts = []
+        
         for run in fill_runs:        
                 try:
                     list_new_extracts.append([f for f in nbm_raw if (
