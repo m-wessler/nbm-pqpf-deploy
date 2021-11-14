@@ -100,13 +100,13 @@ if __name__ == '__main__':
     
     nbm_extract = np.array(sorted(glob(nbm_dir + 'extract/*.nc')))
     nbm_agg = np.array(sorted(glob(nbm_dir + 'agg/*.nc')))
-    print(nbm_agg)
+    #print(nbm_agg)
 
     # Most recent run in archive
     try:
         with xr.open_dataset(sorted([f for f in nbm_agg if 'f168' in f])[-1]) as sample:
             
-            print(sample)
+            #print(sample)
 
             if sample.init.size > 1:
                 most_recent_agg = pd.to_datetime(sample.init[-1].values)
