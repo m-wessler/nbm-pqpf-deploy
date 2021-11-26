@@ -1,0 +1,429 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import shutil\n",
+    "import shlex\n",
+    "import subprocess\n",
+    "import sys, os, gc\n",
+    "import numpy as np\n",
+    "import xarray as xr\n",
+    "import pandas as pd\n",
+    "import multiprocessing as mp\n",
+    "\n",
+    "from glob import glob\n",
+    "from io import StringIO\n",
+    "from datetime import datetime, timedelta\n",
+    "\n",
+    "core_limit = 8"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nbm_dir = '/scratch/general/lustre/u1070830/nbm/'\n",
+    "# urma_dir = '/scratch/general/lustre/u1070830/urma/'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# urma_raw = np.array(sorted(glob(urma_dir + '*.grib2')))\n",
+    "# urma_agg = xr.open_dataset(glob(urma_dir + 'agg/*')[0])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nbm_raw = np.array(sorted([f for f in sorted(glob(nbm_dir + '*/*.grib2')) if 'extract' not in f]))\n",
+    "nbm_agg = np.array(sorted(glob(nbm_dir + 'extract/*')))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# # Last complete URMA aggregated\n",
+    "# last_urma_agg = urma_agg.valid[-1].values\n",
+    "# last_urma_agg"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# # Last complete URMA downloaded\n",
+    "# last_urma_download = xr.open_dataset(urma_raw[-1], engine='cfgrib').valid_time.values\n",
+    "# last_urma_download"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Last complete run aggregated\n",
+    "nbm_agg_file = nbm_agg[0]\n",
+    "last_nbm_agg = xr.open_dataset(nbm_agg_file).init[-1].values\n",
+    "print(last_nbm_agg)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Last complete run downloaded\n",
+    "nbm_f024 = np.array(sorted([f for f in nbm_raw if 'f024' in f]))[-1]\n",
+    "last_nbm_download = xr.open_dataset(nbm_f024, engine='cfgrib').valid_time.values\n",
+    "last_nbm_download"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# # Since we want this to update as soon as possible, use the 24h time mark\n",
+    "# # But we can't produce anything unless URMA is updated as well\n",
+    "# newest_time_match = np.min([last_nbm_download, last_urma_download])\n",
+    "# newest_time_match"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# # Figure out how many missing inits between newest available data and last aggregate\n",
+    "# newest_agg_time_match = np.min([last_nbm_agg, last_urma_agg])\n",
+    "# newest_agg_time_match"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nbm_upload_lag = 6\n",
+    "most_recent_time = datetime.utcnow() #+ timedelta(hours=4, minutes=10)\n",
+    "\n",
+    "roundUp = True if most_recent_time.minute < 30 else False\n",
+    "\n",
+    "most_recent_time = most_recent_time.replace(minute=0, second=0, microsecond=0)\n",
+    "\n",
+    "if roundUp:\n",
+    "    most_recent_time += timedelta(hours=1)\n",
+    "    \n",
+    "# Round down to nearest 0, 6, 12, 18, then grab the run prior\n",
+    "most_recent_time -= timedelta(hours=(most_recent_time.hour%6)+6)\n",
+    "        \n",
+    "most_recent_time"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# if last_nbm_download > last_nbm_agg:\n",
+    "if np.datetime64(most_recent_time) > last_nbm_agg:\n",
+    "    \n",
+    "    print('Newer NBM Available')    \n",
+    "    # fill_runs = pd.date_range(last_nbm_agg, last_nbm_download, freq='6H')\n",
+    "    fill_runs = pd.date_range(last_nbm_agg, most_recent_time, freq='6H')[1:]\n",
+    "    \n",
+    "fill_runs"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Call the NBM download here\n",
+    "python = '/uufs/chpc.utah.edu/common/home/u1070830/anaconda3/envs/xlab/bin/python '\n",
+    "dl_script = '/uufs/chpc.utah.edu/common/home/u1070830/code/model-tools/nbm/get_nbm_gribs_aws.py ' \n",
+    "\n",
+    "dl_start, dl_end = pd.to_datetime(fill_runs[0]), pd.to_datetime(fill_runs[-1])\n",
+    "dl_start, dl_end = [datetime.strftime(t, '%Y%m%d%H%M') for t in [dl_start, dl_end]]\n",
+    "\n",
+    "cmd = python + dl_script + '%s %s'%(dl_start, dl_end)\n",
+    "# print(cmd)\n",
+    "# subprocess.call(shlex.split(cmd))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def unpack_fhr(nbm_file):\n",
+    "    import pygrib\n",
+    "    \n",
+    "    nlat, xlat = 30, 50\n",
+    "    nlon, xlon = -130, -100\n",
+    "\n",
+    "    if os.path.isfile(nbm_file):\n",
+    "\n",
+    "        with pygrib.open(nbm_file) as grb:\n",
+    "\n",
+    "            try:\n",
+    "                lats, lons = grb.message(1).latlons()\n",
+    "            except:\n",
+    "                data = None\n",
+    "            else:\n",
+    "                idx = np.where(\n",
+    "                    (lats >= nlat) & (lats <= xlat) &\n",
+    "                    (lons >= nlon) & (lons <= xlon))\n",
+    "\n",
+    "                init_time = nbm_file.split('/')[-2:]\n",
+    "                init_time = init_time[0] + init_time[1].split('.')[1][1:3]\n",
+    "                init_time = datetime.strptime(init_time, '%Y%m%d%H')\n",
+    "                valid_fhr = int(os.path.basename(nbm_file).split('/')[-1].split('.')[3][1:])\n",
+    "\n",
+    "                # Check if nbm3.2\n",
+    "                if init_time.hour in [1, 7, 13, 19]:\n",
+    "                    init_time -= timedelta(hours=1)\n",
+    "                    valid_fhr += 1\n",
+    "\n",
+    "                valid_time = init_time + timedelta(hours=valid_fhr)\n",
+    "                #print(init_time, valid_fhr, valid_time)\n",
+    "                #print('\\t', valid_fhr, valid_time)\n",
+    "\n",
+    "                percentile, probability, deterministic = [], [], []\n",
+    "                percentile_labels, probability_labels, deterministic_labels = [], [], []\n",
+    "\n",
+    "                data = []\n",
+    "                for msg in grb.read():\n",
+    "\n",
+    "                    interval = msg['stepRange'].split('-')\n",
+    "                    interval = int(interval[1]) - int(interval[0])\n",
+    "\n",
+    "                    if interval == 24:\n",
+    "\n",
+    "                        if 'Probability of event' in str(msg):\n",
+    "\n",
+    "                            threshold = round(msg['upperLimit']/25.4, 2)\n",
+    "\n",
+    "                            if threshold in [0.01, 0.10, 0.25, 0.50, 1.00, 2.00]:\n",
+    "\n",
+    "                                idata = xr.DataArray(msg.data()[0].astype(np.float32), name='probx',\n",
+    "                                                     dims=('y', 'x'), \n",
+    "                                                     coords={'lat':(('y', 'x'), lats), \n",
+    "                                                             'lon':(('y', 'x'), lons)})\n",
+    "\n",
+    "                                idata['init'] = init_time\n",
+    "                                idata['valid'] = valid_time\n",
+    "                                idata['fhr'] = valid_fhr\n",
+    "                                idata['interval'] = interval\n",
+    "                                idata['threshold'] = threshold\n",
+    "\n",
+    "                                data.append(idata)\n",
+    "\n",
+    "        gc.collect()\n",
+    "\n",
+    "        try:\n",
+    "            data = xr.concat(data, dim='threshold')\n",
+    "\n",
+    "        except:\n",
+    "            return None\n",
+    "\n",
+    "        else:\n",
+    "            data_slice = data.isel(x=slice(idx[1].min(), idx[1].max()), \n",
+    "                  y=slice(idx[0].min(), idx[0].max()))\n",
+    "\n",
+    "            return data_slice\n",
+    "\n",
+    "    else:\n",
+    "        return None"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "for forecast_hour in np.arange(24, 168+1, 24):\n",
+    "\n",
+    "    outdir = nbm_dir + 'extract_new/'\n",
+    "    os.makedirs(outdir, exist_ok=True)\n",
+    "    outfile = 'nbm_probx_fhr%03d.new.nc'%forecast_hour\n",
+    "\n",
+    "    if not os.path.isfile(outdir+outfile):\n",
+    "\n",
+    "        flist = []\n",
+    "        for init in fill_runs:\n",
+    "\n",
+    "            search_str = nbm_dir + '%s/*t%02dz*f%03d*WR.grib2'%(\n",
+    "                init.strftime('%Y%m%d'), init.hour, forecast_hour)\n",
+    "            search = glob(search_str)\n",
+    "\n",
+    "            if len(search) > 0:\n",
+    "                flist.append(search[0])\n",
+    "\n",
+    "        flist = np.array(sorted(flist))\n",
+    "        print('nfiles: ', len(flist))\n",
+    "\n",
+    "        ncores = np.min([core_limit, len(flist)])\n",
+    "        with mp.get_context('fork').Pool(ncores) as p:\n",
+    "            returns = p.map(unpack_fhr, flist, chunksize=1)\n",
+    "            p.close()\n",
+    "            p.join()\n",
+    "\n",
+    "        returns = [item for item in returns if item is not None]\n",
+    "        returns = xr.concat(returns, dim='valid')\n",
+    "\n",
+    "        returns.to_netcdf(outdir + outfile)\n",
+    "        print('Saved %s'%(outdir + outfile))\n",
+    "\n",
+    "        del returns\n",
+    "        gc.collect()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nbm_agg_new = np.array(sorted(glob(nbm_dir + 'extract_new/*')))\n",
+    "nbm_agg_new"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def combine_nbm_old_new(fhr): \n",
+    "\n",
+    "    fhr_agg_old_file = sorted(glob(nbm_dir + 'extract/' + '*fhr%03d.nc'%fhr))[0]\n",
+    "    fhr_agg_new_file = sorted(glob(nbm_dir + 'extract_new/' + '*fhr%03d.new.nc'%fhr))[0]\n",
+    "    \n",
+    "    print(fhr_agg_old_file)\n",
+    "    print(fhr_agg_new_file)\n",
+    "    \n",
+    "    fhr_agg_old = xr.open_dataset(fhr_agg_old_file)\n",
+    "    fhr_agg_new = xr.open_dataset(fhr_agg_new_file)\n",
+    "\n",
+    "    not_duplicated = np.array([t for t in fhr_agg_new.valid.values if t not in fhr_agg_old.valid.values])\n",
+    "    fhr_agg_new = fhr_agg_new.sel(valid=not_duplicated)\n",
+    "    \n",
+    "    print('Combining new FHR%03d data...'%fhr)\n",
+    "    \n",
+    "    fhr_agg = xr.concat([fhr_agg_old, fhr_agg_new], dim='valid')\n",
+    "    \n",
+    "    fhr_agg_output_file = nbm_dir + 'extract_new/' + os.path.basename(fhr_agg_old_file)\n",
+    "    fhr_agg.to_netcdf(fhr_agg_output_file)\n",
+    "    print('Saved: %s'%fhr_agg_output_file)\n",
+    "    \n",
+    "    return None\n",
+    "\n",
+    "combine_nbm_old_new(24)\n",
+    "\n",
+    "# ncores = np.min([core_limit, len(np.arange(24, 168.1, 24))])\n",
+    "# with mp.get_context('fork').Pool(ncores) as p:\n",
+    "#     returns = p.map(combine_nbm_old_new, np.arange(24, 168.1, 24), chunksize=1)\n",
+    "#     p.close()\n",
+    "#     p.join()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Verify that the new file didn't corrupt the existing data!\n",
+    "new_agg_temp = sorted([f for f in glob(nbm_dir + 'extract_new/*.nc') if '.new.' in f])\n",
+    "new_agg_check = sorted([f for f in glob(nbm_dir + 'extract_new/*.nc') if '.new.' not in f])\n",
+    "old_agg_check = sorted(glob(nbm_dir + 'extract/*.nc'))\n",
+    "\n",
+    "for temp_file, new_file, old_file in zip(new_agg_temp, new_agg_check, old_agg_check):\n",
+    "    \n",
+    "    try:\n",
+    "        new = xr.open_dataset(new_file)\n",
+    "        old = xr.open_dataset(old_file)\n",
+    "    \n",
+    "    except:\n",
+    "        pass\n",
+    "    \n",
+    "    else:\n",
+    "        if new.valid[-1] > old.valid[-1]:\n",
+    "            print('New aggregate %s updated, check...'%os.path.basename(new_file))\n",
+    "\n",
+    "            try:\n",
+    "                os.remove(temp_file)\n",
+    "                print(temp_file, '-->', 'deleted')\n",
+    "            except:\n",
+    "                pass\n",
+    "            \n",
+    "            try:\n",
+    "                shutil.move(old_file, old_file.replace('.nc', '.old.nc'))\n",
+    "                print(old_file, '-->', old_file.replace('.nc', '.old.nc'))\n",
+    "            except:\n",
+    "                pass\n",
+    "\n",
+    "            try:\n",
+    "                shutil.move(new_file, new_file.replace('extract_new', 'extract'))\n",
+    "                print(new_file, '-->', new_file.replace('extract_new', 'extract'))\n",
+    "            except:\n",
+    "                pass\n",
+    "\n",
+    "        else:\n",
+    "            print('New aggregate %s failed, follow up...'%os.path.basename(new_file))\n",
+    "\n",
+    "        print()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

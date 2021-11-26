@@ -1,0 +1,277 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os, gc\n",
+    "import pygrib\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import xarray as xr\n",
+    "import multiprocessing as mp\n",
+    "import matplotlib.pyplot as plt \n",
+    "\n",
+    "from glob import glob\n",
+    "from functools import partial\n",
+    "from matplotlib import gridspec\n",
+    "from datetime import datetime, timedelta\n",
+    "\n",
+    "import regionmask\n",
+    "import cartopy\n",
+    "import cartopy.crs as ccrs\n",
+    "import geopandas as gpd\n",
+    "\n",
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')\n",
+    "\n",
+    "os.environ['OMP_NUM_THREADS'] = '1'\n",
+    "n_cores = 64"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nbm_dir = '/scratch/general/lustre/u1070830/nbm/'\n",
+    "\n",
+    "urma_dir = '/scratch/general/lustre/u1070830/urma/'\n",
+    "tmp_dir = '/scratch/general/lustre/u1070830/tmp/'\n",
+    "os.makedirs(tmp_dir, exist_ok=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "start_date = datetime(2020, 10, 1, 0)\n",
+    "end_date = datetime(2021, 5, 15, 23, 59)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "FileNotFoundError",
+     "evalue": "[Errno 2] No such file or directory: b'/scratch/general/lustre/u1070830/urma/agg/urma_agg.nc'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mKeyError\u001b[0m                                  Traceback (most recent call last)",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/file_manager.py\u001b[0m in \u001b[0;36m_acquire_with_cache_info\u001b[0;34m(self, needs_lock)\u001b[0m\n\u001b[1;32m    198\u001b[0m             \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 199\u001b[0;31m                 \u001b[0mfile\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_cache\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_key\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    200\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mKeyError\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/lru_cache.py\u001b[0m in \u001b[0;36m__getitem__\u001b[0;34m(self, key)\u001b[0m\n\u001b[1;32m     52\u001b[0m         \u001b[0;32mwith\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_lock\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 53\u001b[0;31m             \u001b[0mvalue\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_cache\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     54\u001b[0m             \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_cache\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mmove_to_end\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mKeyError\u001b[0m: [<class 'netCDF4._netCDF4.Dataset'>, ('/scratch/general/lustre/u1070830/urma/agg/urma_agg.nc',), 'r', (('clobber', True), ('diskless', False), ('format', 'NETCDF4'), ('persist', False))]",
+      "\nDuring handling of the above exception, another exception occurred:\n",
+      "\u001b[0;31mFileNotFoundError\u001b[0m                         Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-4-c0525e6301b6>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0murma\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mxr\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mopen_dataset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0murma_dir\u001b[0m \u001b[0;34m+\u001b[0m \u001b[0;34m'agg/urma_agg.nc'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      2\u001b[0m \u001b[0murma\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0murma\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m'apcp24h_mm'\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrename\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m'apcp24h_in'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      3\u001b[0m \u001b[0murma\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m'lon'\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0murma\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m'lon'\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m-\u001b[0m \u001b[0;36m360\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      4\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      5\u001b[0m \u001b[0;31m#subset for only 0/12Z\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/api.py\u001b[0m in \u001b[0;36mopen_dataset\u001b[0;34m(filename_or_obj, group, decode_cf, mask_and_scale, decode_times, autoclose, concat_characters, decode_coords, engine, chunks, lock, cache, drop_variables, backend_kwargs, use_cftime, decode_timedelta)\u001b[0m\n\u001b[1;32m    506\u001b[0m             \u001b[0mengine\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0m_get_default_engine\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mfilename_or_obj\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mallow_remote\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    507\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mengine\u001b[0m \u001b[0;34m==\u001b[0m \u001b[0;34m\"netcdf4\"\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 508\u001b[0;31m             store = backends.NetCDF4DataStore.open(\n\u001b[0m\u001b[1;32m    509\u001b[0m                 \u001b[0mfilename_or_obj\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mgroup\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mgroup\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mlock\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mlock\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0mbackend_kwargs\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    510\u001b[0m             )\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/netCDF4_.py\u001b[0m in \u001b[0;36mopen\u001b[0;34m(cls, filename, mode, format, group, clobber, diskless, persist, lock, lock_maker, autoclose)\u001b[0m\n\u001b[1;32m    356\u001b[0m             \u001b[0mnetCDF4\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mDataset\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mfilename\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmode\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mmode\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mkwargs\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mkwargs\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    357\u001b[0m         )\n\u001b[0;32m--> 358\u001b[0;31m         \u001b[0;32mreturn\u001b[0m \u001b[0mcls\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmanager\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mgroup\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mgroup\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmode\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mmode\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mlock\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mlock\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mautoclose\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mautoclose\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    359\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    360\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0m_acquire\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mneeds_lock\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/netCDF4_.py\u001b[0m in \u001b[0;36m__init__\u001b[0;34m(self, manager, group, mode, lock, autoclose)\u001b[0m\n\u001b[1;32m    312\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_group\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mgroup\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    313\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_mode\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mmode\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 314\u001b[0;31m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mformat\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mds\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdata_model\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    315\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_filename\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mds\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfilepath\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    316\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mis_remote\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mis_remote_uri\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_filename\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/netCDF4_.py\u001b[0m in \u001b[0;36mds\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m    365\u001b[0m     \u001b[0;34m@\u001b[0m\u001b[0mproperty\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    366\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mds\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 367\u001b[0;31m         \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_acquire\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    368\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    369\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mopen_store_variable\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mname\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mvar\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/netCDF4_.py\u001b[0m in \u001b[0;36m_acquire\u001b[0;34m(self, needs_lock)\u001b[0m\n\u001b[1;32m    359\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    360\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0m_acquire\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mneeds_lock\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 361\u001b[0;31m         \u001b[0;32mwith\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_manager\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0macquire_context\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mneeds_lock\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mas\u001b[0m \u001b[0mroot\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    362\u001b[0m             \u001b[0mds\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0m_nc4_require_group\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mroot\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_group\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_mode\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    363\u001b[0m         \u001b[0;32mreturn\u001b[0m \u001b[0mds\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/contextlib.py\u001b[0m in \u001b[0;36m__enter__\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m    111\u001b[0m         \u001b[0;32mdel\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0margs\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mkwds\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfunc\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    112\u001b[0m         \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 113\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mnext\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgen\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    114\u001b[0m         \u001b[0;32mexcept\u001b[0m \u001b[0mStopIteration\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    115\u001b[0m             \u001b[0;32mraise\u001b[0m \u001b[0mRuntimeError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"generator didn't yield\"\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/file_manager.py\u001b[0m in \u001b[0;36macquire_context\u001b[0;34m(self, needs_lock)\u001b[0m\n\u001b[1;32m    185\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0macquire_context\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mneeds_lock\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    186\u001b[0m         \u001b[0;34m\"\"\"Context manager for acquiring a file.\"\"\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 187\u001b[0;31m         \u001b[0mfile\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mcached\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_acquire_with_cache_info\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mneeds_lock\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    188\u001b[0m         \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    189\u001b[0m             \u001b[0;32myield\u001b[0m \u001b[0mfile\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/envs/xlab/lib/python3.8/site-packages/xarray/backends/file_manager.py\u001b[0m in \u001b[0;36m_acquire_with_cache_info\u001b[0;34m(self, needs_lock)\u001b[0m\n\u001b[1;32m    203\u001b[0m                     \u001b[0mkwargs\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mkwargs\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mcopy\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    204\u001b[0m                     \u001b[0mkwargs\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m\"mode\"\u001b[0m\u001b[0;34m]\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_mode\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 205\u001b[0;31m                 \u001b[0mfile\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_opener\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m*\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_args\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0mkwargs\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    206\u001b[0m                 \u001b[0;32mif\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_mode\u001b[0m \u001b[0;34m==\u001b[0m \u001b[0;34m\"w\"\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    207\u001b[0m                     \u001b[0;31m# ensure file doesn't get overriden when opened again\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32mnetCDF4/_netCDF4.pyx\u001b[0m in \u001b[0;36mnetCDF4._netCDF4.Dataset.__init__\u001b[0;34m()\u001b[0m\n",
+      "\u001b[0;32mnetCDF4/_netCDF4.pyx\u001b[0m in \u001b[0;36mnetCDF4._netCDF4._ensure_nc_success\u001b[0;34m()\u001b[0m\n",
+      "\u001b[0;31mFileNotFoundError\u001b[0m: [Errno 2] No such file or directory: b'/scratch/general/lustre/u1070830/urma/agg/urma_agg.nc'"
+     ]
+    }
+   ],
+   "source": [
+    "urma = xr.open_dataset(urma_dir + 'agg/urma_agg.nc')\n",
+    "urma = urma['apcp24h_mm'].rename('apcp24h_in')\n",
+    "urma['lon'] = urma['lon'] - 360\n",
+    "\n",
+    "#subset for only 0/12Z\n",
+    "urma = urma.sel(valid=np.array([t for t in urma.valid.values if pd.to_datetime(t).hour in [0, 12]]))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cwa = 'WESTUS'\n",
+    "\n",
+    "geodir = '../forecast-zones/'\n",
+    "zones_shapefile = glob(geodir + '*.shp')[0]\n",
+    "\n",
+    "# Read the shapefile\n",
+    "zones = gpd.read_file(zones_shapefile)\n",
+    "\n",
+    "# Prune to Western Region using TZ\n",
+    "zones = zones.set_index('TIME_ZONE').loc[['M', 'Mm', 'm', 'MP', 'P']].reset_index()\n",
+    "cwas = zones.dissolve(by='CWA').reset_index()[['CWA', 'geometry']]\n",
+    "_cwas = cwas.copy()\n",
+    "\n",
+    "if cwa == 'WESTUS':\n",
+    "    _cwas['CWA'] = 'WESTUS'\n",
+    "    _cwas = _cwas.dissolve(by='CWA').reset_index()\n",
+    "    bounds = _cwas.total_bounds\n",
+    "else:\n",
+    "    bounds = _cwas[_cwas['CWA'] == cwa].bounds.values[0]\n",
+    "    \n",
+    "print(bounds)\n",
+    "    \n",
+    "lons, lats = urma.lon, urma.lat\n",
+    "mask = regionmask.mask_3D_geopandas(_cwas, lons, lats).rename({'region':'cwa'})\n",
+    "mask['cwa'] = _cwas.iloc[mask.cwa]['CWA'].values.astype(str)\n",
+    "mask = mask.sel(cwa=cwa)\n",
+    "mask\n",
+    "\n",
+    "idx = np.where(\n",
+    "    (urma.lat >= bounds[1]) & (urma.lat <= bounds[3]) &\n",
+    "    (urma.lon >= bounds[0]) & (urma.lon <= bounds[2]))\n",
+    "\n",
+    "mask = mask.isel(y=slice(idx[0].min(), idx[0].max()), x=slice(idx[1].min(), idx[1].max()))\n",
+    "urma = urma.isel(y=slice(idx[0].min(), idx[0].max()), x=slice(idx[1].min(), idx[1].max()))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def extract_pqpf_verif_stats(_fhr, _urma, _mask):\n",
+    "\n",
+    "    nbm_files = glob(nbm_dir + 'agg/*f%03d.WR.nc'%_fhr)\n",
+    "    \n",
+    "    # Subset the threshold value\n",
+    "    nbm = xr.open_mfdataset(nbm_files, concat_dim='valid')['probx'].isel(\n",
+    "        y=slice(idx[0].min(), idx[0].max()), \n",
+    "        x=slice(idx[1].min(), idx[1].max()))\n",
+    "        \n",
+    "    # Subset the times\n",
+    "    nbm_time = nbm.valid\n",
+    "    urma_time = _urma.valid\n",
+    "    time_match = nbm_time[np.in1d(nbm_time, urma_time)].values\n",
+    "    time_match = np.array([t for t in time_match if pd.to_datetime(t) >= start_date])\n",
+    "    time_match = np.array([t for t in time_match if pd.to_datetime(t) <= end_date])\n",
+    "\n",
+    "    _nbm = nbm.sel(valid=time_match)\n",
+    "    _urma = _urma.sel(valid=time_match)\n",
+    "    nbm_mask, _nbm = xr.broadcast(_mask, _nbm)\n",
+    "    urma_mask, _urma = xr.broadcast(_mask, _urma)\n",
+    "\n",
+    "    _nbm_masked = xr.where(nbm_mask, _nbm, np.nan)\n",
+    "    _urma_masked = xr.where(urma_mask, _urma, np.nan)\n",
+    "    \n",
+    "    return _nbm_masked, _urma_masked"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve\n",
+    "from sklearn.calibration import calibration_curve\n",
+    "\n",
+    "wpc_thresholds = [0.254, 2.54, 6.35, 12.7, 25.4, 50.8, 76.2, 101.6]\n",
+    "wpc_thresholds_in = [0.01, 0.10, 0.25, 0.50, 1.0]\n",
+    "wpc_colors = ['red', 'lime', 'blue', 'cyan', 'magenta']\n",
+    "nbins = 10"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_nbm_masked, _urma_masked = extract_pqpf_verif_stats(24, urma, mask)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_nbm_masked"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# threshold = 0.01*25.4\n",
+    "\n",
+    "# n_bins= 10\n",
+    "# bins = np.linspace(0., 1. + 1e-8, n_bins + 1)\n",
+    "\n",
+    "# fraction_of_positives, mean_predicted_value = [], []\n",
+    "\n",
+    "# _urma_masked_binary = xr.where(_urma_masked > threshold, True, False)\n",
+    "\n",
+    "# for _urma_masked_flat, _nbm_masked_flat in zip(\n",
+    "#     _urma_masked_binary.values.reshape(-1, _urma_masked.valid.size), \n",
+    "#     _nbm_masked.sel(threshold=threshold).values.reshape(-1, _urma_masked.valid.size)):\n",
+    "    \n",
+    "#     # fp - fraction positive (ORF); mp - mean predicted (ThreshXprob)\n",
+    "#     fp, mp = calibration_curve(_urma_masked_flat, _nbm_masked_flat/100, n_bins=n_bins)\n",
+    "    \n",
+    "#     if len(fp) != n_bins:\n",
+    "#         fp = mp = np.full(n_bins, fill_value=np.nan, dtype=np.float)\n",
+    "        \n",
+    "#     fraction_of_positives.append(fp)\n",
+    "#     mean_predicted_value.append(mp)\n",
+    "    \n",
+    "# fraction_of_positives = np.array(fraction_of_positives) \n",
+    "# mean_predicted_value = np.array(mean_predicted_value)\n",
+    "\n",
+    "# spatial_frac_pos = xr.DataArray(\n",
+    "#     fraction_of_positives.reshape(np.append(_urma_masked_binary.shape[:-1], n_bins))\n",
+    "# ).rename({'dim_0':'y', 'dim_1':'x', 'dim_2':'bin'})\n",
+    "\n",
+    "# spatial_frac_pos['lat'] = _urma_masked_binary.lat\n",
+    "# spatial_frac_pos['lon'] = _urma_masked_binary.lon\n",
+    "# spatial_frac_pos['bin'] = (bins[:-1] + bins[1:]) / 2\n",
+    "\n",
+    "# spatial_frac_pos.to_netcdf('spatial_frac_pos.baseline.nc')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
