@@ -98,193 +98,193 @@ if __name__ == '__main__':
 
     stats_dir = '/uufs/chpc.utah.edu/common/home/u1070830/code/nbm-verify/archive/'
     os.makedirs(stats_dir, exist_ok=True)
-#     scores.to_netcdf(stats_dir + '%s_stats.nc'%(cwa))
+    scores.to_netcdf(stats_dir + '%s_stats.nc'%(cwa))
 
-#     scores = xr.open_dataset(stats_dir + '%s_stats.nc'%(cwa))
+    scores = xr.open_dataset(stats_dir + '%s_stats.nc'%(cwa))
 
-#     roc_ts = []
-#     roc_curve = []
+    roc_ts = []
+    roc_curve = []
 
-#     for i in range(len(scores.thresh)):
+    for i in range(len(scores.thresh)):
 
-#         _roc_ts = []
-#         _roc_curve = []
+        _roc_ts = []
+        _roc_curve = []
 
-#         for fhr in scores.fhr:
+        for fhr in scores.fhr:
 
-#             _scores = scores.isel(thresh=i).sel(fhr=fhr)
+            _scores = scores.isel(thresh=i).sel(fhr=fhr)
 
-#             roc_x, roc_y = _scores['false_alarm_rate'], _scores['hit_rate']
-#             roc_x = np.append(np.append(1, roc_x), 0)
-#             roc_y = np.append(np.append(1, roc_y), 0)
+            roc_x, roc_y = _scores['false_alarm_rate'], _scores['hit_rate']
+            roc_x = np.append(np.append(1, roc_x), 0)
+            roc_y = np.append(np.append(1, roc_y), 0)
 
-#             roc_lab = _scores.center
-#             roc_lab = np.append(np.append(1, roc_lab), 0)
+            roc_lab = _scores.center
+            roc_lab = np.append(np.append(1, roc_lab), 0)
 
-#             _roc_curve.append([roc_x, roc_y, roc_lab])
+            _roc_curve.append([roc_x, roc_y, roc_lab])
 
-#             auc = auc_calc(roc_x, roc_y)
-#             roc_ss = 2 * (auc - 0.5)
+            auc = auc_calc(roc_x, roc_y)
+            roc_ss = 2 * (auc - 0.5)
 
-#             _roc_ts.append([auc, roc_ss])
+            _roc_ts.append([auc, roc_ss])
 
-#         roc_curve.append(_roc_curve)
-#         roc_ts.append(_roc_ts)
+        roc_curve.append(_roc_curve)
+        roc_ts.append(_roc_ts)
 
-#     roc_curve = np.array(roc_curve)
-#     roc_ts = np.array(roc_ts)
+    roc_curve = np.array(roc_curve)
+    roc_ts = np.array(roc_ts)
 
-#     fig, ax = plt.subplots(1, facecolor='w', figsize=(12, 6))
+    fig, ax = plt.subplots(1, facecolor='w', figsize=(12, 6))
 
-#     for i, thresh in enumerate(produce_thresholds):
+    for i, thresh in enumerate(produce_thresholds):
 
-#         ax.plot(scores.fhr, roc_ts[i, :, 1],
-#                 marker='x', markersize=10, linewidth=2,
-#                 label='> %.2f"'%thresh)
+        ax.plot(scores.fhr, roc_ts[i, :, 1],
+                marker='x', markersize=10, linewidth=2,
+                label='> %.2f"'%thresh)
 
-#     ax.axhline(0, color='k')
-#     ax.set_xticks(scores.fhr)
-#     ax.set_ylabel('ROC Skill Score\n')
+    ax.axhline(0, color='k')
+    ax.set_xticks(scores.fhr)
+    ax.set_ylabel('ROC Skill Score\n')
 
-#     axx = ax.twinx()
-#     ax.set_yticks(ax.get_yticks())
-#     axx.set_yticks(ax.get_yticks())
-#     axx.set_yticklabels(['%.1f'%v for v in ax.get_yticks()/2 + 0.5])
-#     axx.set_ylabel('\nArea Under Curve (AUC)')
+    axx = ax.twinx()
+    ax.set_yticks(ax.get_yticks())
+    axx.set_yticks(ax.get_yticks())
+    axx.set_yticklabels(['%.1f'%v for v in ax.get_yticks()/2 + 0.5])
+    axx.set_ylabel('\nArea Under Curve (AUC)')
 
-#     ax.set_xlabel('\nForecast Hour/Lead Time')
+    ax.set_xlabel('\nForecast Hour/Lead Time')
 
-#     date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-#     ax.set_title((
-#         'NBM Relative Operating Characteristic | CWA: %s\n'%cwa +
-#         '%s - %s\n'%(date0, date1) + 
-#         '%02dh Acc QPF\n\n'%(interval) +
-#         'Probability of Exceeding Threshold\n'))
+    date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
+    ax.set_title((
+        'NBM Relative Operating Characteristic | CWA: %s\n'%cwa +
+        '%s - %s\n'%(date0, date1) + 
+        '%02dh Acc QPF\n\n'%(interval) +
+        'Probability of Exceeding Threshold\n'))
 
-#     ax.grid()
-#     ax.legend(loc='lower left')
+    ax.grid()
+    ax.legend(loc='lower left')
 
-#     savedir = fig_dir + '%s/%s/roc/'%(ver, cwa)
-#     os.makedirs(savedir, exist_ok=True)
+    savedir = fig_dir + '%s/%s/roc/'%(ver, cwa)
+    os.makedirs(savedir, exist_ok=True)
 
-#     savestr = 'nbm{}_{}_roc_leadtime.png'.format(ver, cwa)
+    savestr = 'nbm{}_{}_roc_leadtime.png'.format(ver, cwa)
 
-#     plt.savefig(savedir + savestr, dpi=200)
-#     print('Saved: ', savestr)
+    plt.savefig(savedir + savestr, dpi=200)
+    print('Saved: ', savestr)
 
-#     plt.close()
+    plt.close()
 
-#     for i, thresh in enumerate(produce_thresholds):
+    for i, thresh in enumerate(produce_thresholds):
 
-#         fig, ax = plt.subplots(figsize=(10, 10), facecolor='w')
-#         shades = np.linspace(.05, .65, len(scores.fhr))
+        fig, ax = plt.subplots(figsize=(10, 10), facecolor='w')
+        shades = np.linspace(.05, .65, len(scores.fhr))
 
-#         for ii, fhr in enumerate(scores.fhr):
+        for ii, fhr in enumerate(scores.fhr):
 
-#             ax.plot(roc_curve[i, ii, 0, :], roc_curve[i, ii, 1, :],
-#                     linewidth=1, label='F%03d'%fhr, color=str(shades[i]))
+            ax.plot(roc_curve[i, ii, 0, :], roc_curve[i, ii, 1, :],
+                    linewidth=1, label='F%03d'%fhr, color=str(shades[i]))
 
-#         ax.plot(roc_curve[i, :, 0, :].mean(axis=0), roc_curve[i, :, 1, :].mean(axis=0), 
-#                 marker='o', markersize=7.5, color='r', linewidth=2)
+        ax.plot(roc_curve[i, :, 0, :].mean(axis=0), roc_curve[i, :, 1, :].mean(axis=0), 
+                marker='o', markersize=7.5, color='r', linewidth=2)
 
-#         for point in roc_curve[i].mean(axis=0).T:
-#             x, y, s = point
-#             ax.text(x*1.04, y*.995, '%.02f'%s, fontsize=10)
+        for point in roc_curve[i].mean(axis=0).T:
+            x, y, s = point
+            ax.text(x*1.04, y*.995, '%.02f'%s, fontsize=10)
 
-#         ax.plot(np.arange(0, 1.1), np.arange(0, 1.1), 'k--')
-#         ax.set_xlim(0, 1)
-#         ax.set_ylim(0, 1)
+        ax.plot(np.arange(0, 1.1), np.arange(0, 1.1), 'k--')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
 
-#         date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-#         ax.set_title((
-#             'NBM Relative Operating Characteristic | CWA: %s\n'%cwa +
-#             '%s - %s\n'%(date0, date1) + 
-#             '%02dh Acc QPF | %3dh Lead Time\n\n'%(interval, fhr) +
-#             'Probability of Exceeding %.2f"\n'%thresh))
+        date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
+        ax.set_title((
+            'NBM Relative Operating Characteristic | CWA: %s\n'%cwa +
+            '%s - %s\n'%(date0, date1) + 
+            '%02dh Acc QPF | %3dh Lead Time\n\n'%(interval, fhr) +
+            'Probability of Exceeding %.2f"\n'%thresh))
 
-#         ax.set_xlabel('False Alarm Rate (POFD)')
-#         ax.set_ylabel('Probability of Detection (POD)')
-#         ax.text(.45, .42, 'No Skill', rotation=45, fontsize=14)
+        ax.set_xlabel('False Alarm Rate (POFD)')
+        ax.set_ylabel('Probability of Detection (POD)')
+        ax.text(.45, .42, 'No Skill', rotation=45, fontsize=14)
 
-#         ax.text(.812, .055, 'ROCSS: %.2f'%roc_ts[i].mean(axis=0)[1], 
-#                 rotation=0, fontsize=14, weight='bold')
+        ax.text(.812, .055, 'ROCSS: %.2f'%roc_ts[i].mean(axis=0)[1], 
+                rotation=0, fontsize=14, weight='bold')
 
-#         ax.text(.85, .025, 'AUC: %.2f'%roc_ts[i].mean(axis=0)[0],
-#                 rotation=0, fontsize=14, weight='bold')
+        ax.text(.85, .025, 'AUC: %.2f'%roc_ts[i].mean(axis=0)[0],
+                rotation=0, fontsize=14, weight='bold')
 
-#         ax.grid()
-#         ax.legend(loc='center right')
+        ax.grid()
+        ax.legend(loc='center right')
 
-#         savedir = fig_dir + '%s/%s/roc/'%(ver, cwa)
-#         os.makedirs(savedir, exist_ok=True)
+        savedir = fig_dir + '%s/%s/roc/'%(ver, cwa)
+        os.makedirs(savedir, exist_ok=True)
 
-#         savestr = 'nbm{}_{}_roc_curve_threshold{}.png'.format(ver, cwa, ('%.2f'%thresh).replace('.', 'p'))
+        savestr = 'nbm{}_{}_roc_curve_threshold{}.png'.format(ver, cwa, ('%.2f'%thresh).replace('.', 'p'))
 
-#         plt.savefig(savedir + savestr, dpi=200)
-#         print('Saved: ', savestr)
+        plt.savefig(savedir + savestr, dpi=200)
+        print('Saved: ', savestr)
 
-#         plt.close()
+        plt.close()
 
-#     fig, ax = plt.subplots(1, facecolor='w', figsize=(12, 6))
+    fig, ax = plt.subplots(1, facecolor='w', figsize=(12, 6))
 
-#     for i, thresh in enumerate(produce_thresholds):
+    for i, thresh in enumerate(produce_thresholds):
 
-#         ax.plot(scores.fhr, scores['brier_skill'].isel(thresh=i),
-#                 marker='x', markersize=10, linewidth=2,
-#                 label='> %.2f"'%thresh)
+        ax.plot(scores.fhr, scores['brier_skill'].isel(thresh=i),
+                marker='x', markersize=10, linewidth=2,
+                label='> %.2f"'%thresh)
 
-#     ax.axhline(0, color='k')
-#     ax.set_xticks(scores.fhr)
-#     ax.set_xlabel('\nForecast Hour/Lead Time')
+    ax.axhline(0, color='k')
+    ax.set_xticks(scores.fhr)
+    ax.set_xlabel('\nForecast Hour/Lead Time')
 
-#     date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-#     ax.set_title((
-#         'NBM Brier Skill Score | CWA: %s\n'%cwa +
-#         '%s - %s\n'%(date0, date1) + 
-#         '%02dh Acc QPF\n\n'%(interval) +
-#         'Probability of Exceeding Threshold\n'))
+    date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
+    ax.set_title((
+        'NBM Brier Skill Score | CWA: %s\n'%cwa +
+        '%s - %s\n'%(date0, date1) + 
+        '%02dh Acc QPF\n\n'%(interval) +
+        'Probability of Exceeding Threshold\n'))
 
-#     ax.grid()
-#     ax.legend(loc='upper right')
+    ax.grid()
+    ax.legend(loc='upper right')
 
-#     savedir = fig_dir + '%s/%s/bss/'%(ver, cwa)
-#     os.makedirs(savedir, exist_ok=True)
+    savedir = fig_dir + '%s/%s/bss/'%(ver, cwa)
+    os.makedirs(savedir, exist_ok=True)
 
-#     savestr = 'nbm{}_{}_bss_leadtime.png'.format(ver, cwa)
+    savestr = 'nbm{}_{}_bss_leadtime.png'.format(ver, cwa)
 
-#     plt.savefig(savedir + savestr, dpi=200)
-#     print('Saved: ', savestr)
+    plt.savefig(savedir + savestr, dpi=200)
+    print('Saved: ', savestr)
 
-#     plt.close()
+    plt.close()
 
-#     fig, ax = plt.subplots(1, facecolor='w', figsize=(12, 6))
+    fig, ax = plt.subplots(1, facecolor='w', figsize=(12, 6))
 
-#     for i, thresh in enumerate(produce_thresholds):
+    for i, thresh in enumerate(produce_thresholds):
 
-#         ax.plot(scores.fhr, scores['ets'].isel(thresh=i).mean(dim='center'),
-#                 marker='x', markersize=10, linewidth=2,
-#                 label='> %.2f"'%thresh)
+        ax.plot(scores.fhr, scores['ets'].isel(thresh=i).mean(dim='center'),
+                marker='x', markersize=10, linewidth=2,
+                label='> %.2f"'%thresh)
 
-#     ax.axhline(0, color='k')
-#     ax.set_xticks(scores.fhr)
-#     ax.set_xlabel('\nForecast Hour/Lead Time')
+    ax.axhline(0, color='k')
+    ax.set_xticks(scores.fhr)
+    ax.set_xlabel('\nForecast Hour/Lead Time')
 
-#     date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-#     ax.set_title((
-#         'NBM Equitable Threat Score | CWA: %s\n'%cwa +
-#         '%s - %s\n'%(date0, date1) + 
-#         '%02dh Acc QPF\n\n'%(interval) +
-#         'Probability of Exceeding Threshold\n'))
+    date0, date1 = start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
+    ax.set_title((
+        'NBM Equitable Threat Score | CWA: %s\n'%cwa +
+        '%s - %s\n'%(date0, date1) + 
+        '%02dh Acc QPF\n\n'%(interval) +
+        'Probability of Exceeding Threshold\n'))
 
-#     ax.grid()
-#     ax.legend(loc='upper right')
+    ax.grid()
+    ax.legend(loc='upper right')
 
-#     savedir = fig_dir + '%s/%s/ets/'%(ver, cwa)
-#     os.makedirs(savedir, exist_ok=True)
+    savedir = fig_dir + '%s/%s/ets/'%(ver, cwa)
+    os.makedirs(savedir, exist_ok=True)
 
-#     savestr = 'nbm{}_{}_ets_leadtime.png'.format(ver, cwa)
+    savestr = 'nbm{}_{}_ets_leadtime.png'.format(ver, cwa)
 
-#     plt.savefig(savedir + savestr, dpi=200)
-#     print('Saved: ', savestr)
+    plt.savefig(savedir + savestr, dpi=200)
+    print('Saved: ', savestr)
 
-#     plt.close()
+    plt.close()
